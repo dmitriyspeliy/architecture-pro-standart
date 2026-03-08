@@ -1,0 +1,68 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_LEFT_RIGHT()
+
+Person(newCustomer, "Новый клиент")
+Person(existingCustomer, "Клиент интернет-банка")
+Person(depBackOfficer, "Сотрудник бэк-офиса депозитов")
+Person(credBackOfficer, "Сотрудник кредитного бэк-офиса")
+Person(callCenterAgent, "Оператор кол-центра")
+
+System_Ext(smsGateway, "SMS-шлюз", "Внешний провайдер SMS")
+
+System_Boundary(siteBoundary, "Сайт банка") {
+  Container(siteWeb, "Website", "PHP + React", "Показывает депозитные продукты и форму заявки")
+}
+
+System_Boundary(ibBoundary, "Интернет-банк") {
+  Container(ibWeb, "Internet Bank Web", "ASP.NET MVC 4.5", "UI интернет-банка")
+  Container(ibDepositModule, "Deposit UI Module", ".NET Framework", "Экран депозитов и отправка заявки")
+}
+
+System_Boundary(mvpBoundary, "MVP контур открытия депозитов") {
+  Container(depositApp, "Deposit Application Service", "Java", "Приём, валидация, регистрация и маршрутизация заявок")
+  ContainerDb(depositDb, "Deposit Application DB", "MS SQL", "Заявки, статусы, audit, idempotency")
+
+  Container(rateService, "Deposit Rate Service", "Java", "Управление ставками и специальными условиями")
+  ContainerDb(rateDb, "Rate DB", "Oracle или MS SQL", "Актуальные ставки, история изменений, специальные условия")
+
+  Container(notificationService, "Notification Service", "Java", "SMS-коды, уведомления, шаблоны, ретраи")
+
+  Container(absAdapter, "ABS Integration Adapter", "Java", "Изолирует интеграцию нового контура с АБС")
+}
+
+System_Boundary(callBoundary, "Система кол-центра") {
+  Container(callApi, "Call Center Platform", "React + Spring Boot + PostgreSQL", "Работа операторов с обращениями")
+}
+
+System_Boundary(absBoundary, "АБС") {
+  Container(absUi, "ABS Desktop Client", "Delphi", "Рабочее место сотрудников")
+  Container(absCore, "ABS Core", "Oracle PL/SQL", "Учёт операций, депозитные операции, статусы")
+  ContainerDb(absDb, "ABS DB", "Oracle", "Операционные банковские данные")
+}
+
+Rel(newCustomer, siteWeb, "Просматривает продукты, отправляет заявку", "HTTPS")
+Rel(existingCustomer, ibWeb, "Работает с интернет-банком", "HTTPS")
+Rel(depBackOfficer, absUi, "Обрабатывает заявку и подтверждает условия")
+Rel(depBackOfficer, rateService, "Просматривает актуальные ставки")
+Rel(credBackOfficer, rateService, "Управляет ставками / специальными условиями")
+Rel(callCenterAgent, callApi, "Обрабатывает заявки с сайта")
+
+Rel(siteWeb, depositApp, "Создание заявки", "HTTPS/REST")
+Rel(ibWeb, ibDepositModule, "Отрисовка UI депозитов")
+Rel(ibDepositModule, depositApp, "Создание заявки", "HTTPS/REST")
+Rel(ibDepositModule, notificationService, "Запрос SMS-кода / подтверждение", "HTTPS/REST")
+
+Rel(depositApp, depositDb, "Чтение/запись")
+Rel(depositApp, rateService, "Получение ставок", "HTTPS/REST")
+Rel(rateService, rateDb, "Чтение/запись")
+Rel(depositApp, callApi, "Создание лида из сайта", "HTTPS/REST")
+Rel(depositApp, absAdapter, "Передача заявки в АБС", "Async / Controlled sync")
+Rel(absAdapter, absCore, "Интеграция с АБС", "DB-safe integration / API / File/Queue")
+Rel(absCore, absDb, "Чтение/запись")
+
+Rel(absCore, notificationService, "Событие: ставка подтверждена / депозит открыт", "Integration")
+Rel(notificationService, smsGateway, "Отправка SMS", "API/SMPP")
+
+@enduml

@@ -1,0 +1,40 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_LEFT_RIGHT()
+
+Person(newCustomer, "Новый клиент", "Подаёт заявку на кредит с сайта")
+Person(existingCustomer, "Клиент интернет-банка", "Подаёт заявку на кредит из интернет-банка")
+Person(branchEmployee, "Сотрудник отделения", "Продолжает работу с заявкой в отделении")
+Person(creditOfficer, "Сотрудник кредитного подразделения", "Обрабатывает заявку в кредитном конвейере")
+
+System(site, "Сайт банка", "Показывает кредитные продукты и принимает заявки")
+System(ib, "Интернет-банк", "Показывает продукты, предодобренные предложения и принимает заявки")
+System(abs, "АБС", "Работа отделения, учёт и оформление кредита")
+System(conveyor, "Кредитный конвейер", "Основная система обработки кредитных заявок")
+System(scoring, "Система кредитного скоринга", "Выполняет скоринг заявок")
+System_Ext(bki, "Бюро кредитных историй", "Внешний источник кредитной информации")
+System_Ext(smsGateway, "SMS-шлюз", "Отправка SMS")
+
+System_Boundary(creditMvp, "Контур онлайн-кредитования") {
+  System(creditApp, "Credit Application Service", "Java", "Принимает и маршрутизирует онлайн-заявки")
+  System(notificationService, "Notification Service", "Java", "SMS-коды и SMS-уведомления")
+}
+
+Rel(newCustomer, site, "Подаёт заявку", "HTTPS")
+Rel(existingCustomer, ib, "Подаёт заявку и смотрит предложения", "HTTPS")
+Rel(branchEmployee, abs, "Работает с заявкой в отделении")
+Rel(creditOfficer, conveyor, "Обрабатывает заявку")
+
+Rel(site, creditApp, "Создание заявки", "HTTPS/REST")
+Rel(ib, creditApp, "Создание заявки", "HTTPS/REST")
+Rel(ib, notificationService, "Подтверждение заявки по SMS", "HTTPS/REST")
+
+Rel(creditApp, scoring, "Запрашивает скоринг", "HTTPS/REST")
+Rel(scoring, bki, "Получает данные", "REST API")
+Rel(creditApp, conveyor, "Передаёт заявку в обработку", "Integration API / Adapter")
+Rel(creditApp, abs, "Передаёт идентификатор / статус для отделения", "Integration API / Adapter")
+Rel(conveyor, notificationService, "Изменение статуса заявки", "Integration")
+Rel(notificationService, smsGateway, "Отправляет SMS", "API/SMPP")
+
+@enduml
