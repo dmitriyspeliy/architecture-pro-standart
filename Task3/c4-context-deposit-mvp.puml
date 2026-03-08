@@ -1,0 +1,41 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_LEFT_RIGHT()
+
+Person(newCustomer, "Новый клиент", "Подаёт заявку на депозит с сайта")
+Person(existingCustomer, "Клиент интернет-банка", "Подаёт заявку на депозит из интернет-банка")
+Person(callCenterAgent, "Оператор кол-центра", "Обрабатывает заявки с сайта")
+Person(depBackOfficer, "Сотрудник бэк-офиса депозитов", "Подтверждает условия депозита в MVP")
+Person(credBackOfficer, "Сотрудник кредитного бэк-офиса", "Работает со ставками и специальными условиями")
+
+System(site, "Сайт банка", "PHP + React", "Показывает депозитные продукты и принимает заявки от новых клиентов")
+System(ib, "Интернет-банк", "ASP.NET MVC / .NET Framework", "Показывает продукты и позволяет действующему клиенту подать заявку")
+System(abs, "АБС", "Delphi + Oracle / PL-SQL", "Система учёта и финального подтверждения заявки")
+System(callSystem, "Система кол-центра", "React + Spring Boot + PostgreSQL", "Обработка клиентских обращений и заявок")
+System_Ext(smsGateway, "SMS-шлюз", "Внешний канал отправки SMS")
+
+System_Boundary(mvp, "MVP контур открытия депозитов") {
+  System(depositApp, "Deposit Application Service", "Java", "Принимает и маршрутизирует заявки на депозит")
+  System(rateService, "Deposit Rate Service", "Java", "Хранит и предоставляет ставки по депозитам")
+  System(notificationService, "Notification Service", "Java", "Отправляет SMS и управляет SMS-подтверждениями")
+}
+
+Rel(newCustomer, site, "Просматривает продукты и отправляет заявку", "HTTPS")
+Rel(existingCustomer, ib, "Просматривает продукты и подаёт заявку", "HTTPS")
+Rel(callCenterAgent, callSystem, "Обрабатывает обращения")
+Rel(depBackOfficer, abs, "Подтверждает условия заявки")
+Rel(credBackOfficer, rateService, "Работает со ставками / специальными условиями")
+Rel(depBackOfficer, rateService, "Использует актуальные ставки")
+
+Rel(site, depositApp, "Создаёт заявку на депозит", "HTTPS/REST")
+Rel(ib, depositApp, "Создаёт заявку на депозит", "HTTPS/REST")
+Rel(ib, notificationService, "Запрашивает SMS-код подтверждения", "HTTPS/REST")
+
+Rel(depositApp, rateService, "Получает актуальные ставки", "HTTPS/REST")
+Rel(depositApp, callSystem, "Передаёт лид/заявку с сайта", "HTTPS/REST")
+Rel(depositApp, abs, "Передаёт заявку в обработку", "Integration API / Adapter")
+Rel(abs, notificationService, "Инициирует SMS после подтверждения ставки и открытия", "Integration API / Event")
+Rel(notificationService, smsGateway, "Отправляет SMS", "SMPP/API")
+
+@enduml

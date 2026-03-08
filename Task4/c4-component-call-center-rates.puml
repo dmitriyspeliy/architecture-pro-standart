@@ -1,0 +1,41 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_LEFT_RIGHT()
+
+Person(depOfficer, "Сотрудник депозитного бэк-офиса")
+Person(credOfficer, "Сотрудник кредитного бэк-офиса")
+Person(callAgent, "Оператор кол-центра")
+
+Container_Boundary(rateContainer, "Deposit Rate Service") {
+  Component(rateApi, "Rate API", "REST Controller", "Выдаёт ставки внутренним потребителям")
+  Component(rateManagement, "Rate Management Component", "Application Service", "Управление, публикация и версионирование ставок")
+  Component(rateImport, "XLS Import Component", "Batch / Import", "Импорт ставок из XLS на переходном этапе")
+  Component(rateExport, "Partner Export Component", "Batch / Export", "Формирует файл ставок для партнёрского кол-центра")
+  Component(publication, "Publication Component", "Application Service", "Публикует новую версию ставок во внутренние каналы")
+  Component(audit, "Audit Component", "Application Service", "Сохраняет историю изменений и публикаций")
+  ComponentDb(rateDb, "Rate DB", "Oracle / MS SQL", "Ставки, версии публикации, аудит, статусы выгрузки")
+}
+
+System_Ext(site, "Сайт банка")
+System_Ext(ib, "Интернет-банк")
+System_Ext(callCenter, "Система внутреннего кол-центра")
+System_Ext(partnerCC, "Система партнёрского кол-центра")
+
+Rel(depOfficer, rateManagement, "Управляет ставками")
+Rel(credOfficer, rateManagement, "Работает со специальными условиями")
+Rel(callAgent, callCenter, "Консультирует клиентов")
+
+Rel(site, rateApi, "Запрашивает ставки", "HTTPS/REST")
+Rel(ib, rateApi, "Запрашивает ставки", "HTTPS/REST")
+Rel(callCenter, rateApi, "Запрашивает ставки", "HTTPS/REST")
+
+Rel(rateApi, rateDb, "Читает опубликованные ставки")
+Rel(rateManagement, rateDb, "Читает/записывает ставки")
+Rel(rateImport, rateDb, "Загружает ставки")
+Rel(publication, rateDb, "Фиксирует версию публикации")
+Rel(audit, rateDb, "Пишет аудит")
+Rel(publication, rateExport, "Передаёт опубликованную версию")
+Rel(rateExport, partnerCC, "Формирует файл и передаёт партнёру", "File exchange")
+
+@enduml

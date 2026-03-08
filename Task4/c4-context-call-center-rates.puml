@@ -1,0 +1,32 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_LEFT_RIGHT()
+
+Person(depOfficer, "Сотрудник депозитного бэк-офиса", "Управляет ставками")
+Person(credOfficer, "Сотрудник кредитного бэк-офиса", "Участвует в согласовании специальных ставок")
+Person(callAgent, "Оператор внутреннего кол-центра", "Консультирует клиентов по ставкам")
+Person(partnerAgent, "Оператор партнёрского кол-центра", "Консультирует клиентов по ставкам")
+
+System(site, "Сайт банка", "Показывает актуальные депозитные ставки")
+System(ib, "Интернет-банк", "Показывает актуальные и персонализированные ставки")
+System(callCenter, "Система внутреннего кол-центра", "Рабочее место операторов")
+System_Ext(partnerCC, "Система партнёрского кол-центра", "Внешняя система, получает ставки в виде файла")
+
+System_Boundary(rateBoundary, "Контур управления ставками") {
+  System(rateService, "Deposit Rate Service", "Java", "Единый источник актуальных ставок")
+  System(rateExport, "Rate Export Component", "Java / batch", "Формирует файл ставок для партнёра")
+}
+
+Rel(depOfficer, rateService, "Управляет ставками")
+Rel(credOfficer, rateService, "Согласует специальные условия")
+Rel(callAgent, callCenter, "Использует систему кол-центра")
+Rel(partnerAgent, partnerCC, "Использует внешнюю систему")
+
+Rel(site, rateService, "Получает актуальные ставки", "HTTPS/REST")
+Rel(ib, rateService, "Получает актуальные ставки", "HTTPS/REST")
+Rel(callCenter, rateService, "Получает актуальные ставки", "HTTPS/REST")
+Rel(rateService, rateExport, "Передаёт опубликованную версию ставок")
+Rel(rateExport, partnerCC, "Передаёт файл со ставками", "File exchange")
+
+@enduml

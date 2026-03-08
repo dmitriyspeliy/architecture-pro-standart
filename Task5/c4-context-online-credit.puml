@@ -1,0 +1,63 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_LEFT_RIGHT()
+
+Person(newCustomer, "Новый клиент")
+Person(existingCustomer, "Клиент интернет-банка")
+Person(branchEmployee, "Сотрудник отделения")
+Person(creditOfficer, "Сотрудник кредитного подразделения")
+
+System_Ext(site, "Сайт банка")
+System_Ext(ib, "Интернет-банк")
+System_Ext(abs, "АБС")
+System_Ext(conveyor, "Кредитный конвейер")
+System_Ext(scoring, "Система кредитного скоринга")
+System_Ext(bki, "Бюро кредитных историй")
+System_Ext(smsGateway, "SMS-шлюз")
+
+Container_Boundary(creditBoundary, "Credit Application Service") {
+  Component(publicApi, "Public API", "REST Controller", "Приём онлайн-заявок и запросов статуса")
+  Component(applicationService, "Credit Application Component", "Application Service", "Создание, валидация, обновление и маршрутизация заявки")
+  Component(preApprovalComponent, "Pre-Approval / Offer Component", "Application Service", "Работа с предодобренными предложениями")
+  Component(scoringOrchestrator, "Scoring Orchestrator", "Application Service", "Запускает скоринг по нужному сценарию")
+  Component(statusTracker, "Status Tracking Component", "Application Service", "Хранит статусный трек и историю")
+  Component(idempotencyComponent, "Idempotency Component", "Application Service", "Предотвращает дубли заявок")
+  Component(conveyorAdapter, "Credit Conveyor Adapter", "Integration Component", "Интеграция с кредитным конвейером")
+  Component(absAdapter, "ABS Adapter", "Integration Component", "Доступность заявки для отделения и синхронизация с АБС")
+  Component(notificationClient, "Notification Client", "Integration Component", "Отправляет команды в Notification Service")
+  ComponentDb(appDb, "Credit Application DB", "MS SQL / Oracle", "Заявки, статусы, идентификаторы, аудит, idempotency")
+}
+
+Container_Boundary(notificationBoundary, "Notification Service") {
+  Component(notificationApi, "Notification API", "REST/API", "Приём команд на отправку SMS")
+}
+
+Rel(newCustomer, site, "Подаёт заявку")
+Rel(existingCustomer, ib, "Подаёт заявку и подтверждает SMS")
+Rel(branchEmployee, abs, "Продолжает обработку")
+Rel(creditOfficer, conveyor, "Обрабатывает заявку")
+
+Rel(site, publicApi, "Создаёт заявку", "HTTPS/REST")
+Rel(ib, publicApi, "Создаёт заявку", "HTTPS/REST")
+
+Rel(publicApi, applicationService, "Передаёт команду")
+Rel(applicationService, idempotencyComponent, "Проверяет идемпотентность")
+Rel(applicationService, preApprovalComponent, "Получает предодобренное предложение")
+Rel(applicationService, scoringOrchestrator, "Запускает скоринг")
+Rel(applicationService, statusTracker, "Обновляет статус")
+Rel(applicationService, conveyorAdapter, "Передаёт заявку в конвейер")
+Rel(applicationService, absAdapter, "Публикует идентификатор/статус для отделения")
+Rel(applicationService, notificationClient, "Инициирует SMS")
+Rel(applicationService, appDb, "Чтение/запись")
+Rel(statusTracker, appDb, "Чтение/запись")
+Rel(idempotencyComponent, appDb, "Чтение/запись")
+Rel(preApprovalComponent, appDb, "Чтение")
+Rel(conveyorAdapter, conveyor, "Передаёт заявку", "Integration API")
+Rel(absAdapter, abs, "Синхронизация идентификатора и статуса", "Integration")
+Rel(scoringOrchestrator, scoring, "Запрашивает скоринг", "HTTPS/REST")
+Rel(scoring, bki, "Получает данные", "REST API")
+Rel(notificationClient, notificationApi, "Команда на отправку SMS", "HTTPS/REST")
+Rel(notificationApi, smsGateway, "Отправка SMS", "API/SMPP")
+
+@enduml
